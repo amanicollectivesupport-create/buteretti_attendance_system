@@ -236,17 +236,18 @@ BEFORE UPDATE ON public.profiles
 FOR EACH ROW
 EXECUTE FUNCTION public.handle_profile_auth_linking();
 
--- Attendance summary report per student per semester
+-- Attendance summary report per student per semester (aligned with client parameters and return names)
+DROP FUNCTION IF EXISTS public.get_student_attendance_summary(UUID, TEXT, TEXT) CASCADE;
 CREATE OR REPLACE FUNCTION public.get_student_attendance_summary(
-  p_student_id    UUID,
-  p_semester      TEXT,
-  p_academic_year TEXT
+  student_id            UUID,
+  semester_filter       TEXT,
+  academic_year_filter  TEXT
 )
 RETURNS TABLE (
-  unit_name     TEXT,
-  total_classes BIGINT,
-  attended      BIGINT,
-  percentage    NUMERIC
+  unit_id          UUID,
+  unit_name        TEXT,
+  total_classes    BIGINT,
+  classes_attended BIGINT
 )
 SECURITY DEFINER
 LANGUAGE plpgsql
@@ -256,35 +257,26 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM public.profiles
-    WHERE id = p_student_id
+    WHERE id = student_id
       AND role = 'student'
   ) THEN
-    RAISE EXCEPTION 'Profile ID % is not associated with a student role', p_student_id;
+    RAISE EXCEPTION 'Profile ID % is not associated with a student role', student_id;
   END IF;
 
   RETURN QUERY
   SELECT
+    cu.id AS unit_id,
     cu.name AS unit_name,
     COUNT(a.id) AS total_classes,
-    COUNT(CASE WHEN a.status = 'Present' THEN 1 END) AS attended,
-    CASE
-      WHEN COUNT(a.id) > 0 THEN
-        ROUND(
-          (COUNT(CASE WHEN a.status = 'Present' THEN 1 END)::NUMERIC
-           / COUNT(a.id)::NUMERIC) * 100,
-          1
-        )
-      ELSE
-        100.0  -- No classes yet = 100% by default
-    END AS percentage
+    COUNT(CASE WHEN a.status = 'Present' THEN 1 END) AS classes_attended
   FROM public.course_units cu
   JOIN public.profiles p
-    ON p.id = p_student_id
+    ON p.id = student_id
   LEFT JOIN public.attendance a
     ON  a.unit_id    = cu.id
-    AND a.student_id = p_student_id
-    AND a.semester   = p_semester
-    AND a.academic_year = p_academic_year
+    AND a.student_id = student_id
+    AND a.semester   = semester_filter
+    AND a.academic_year = academic_year_filter
   WHERE cu.course_id = p.course_id
   GROUP BY cu.id, cu.name
   ORDER BY cu.name ASC;

@@ -388,16 +388,17 @@ EXECUTE FUNCTION public.handle_new_user_signup();
 -- Calculates granular attendance metrics for a specific student,
 -- returning data for all registered units including those with 0 classes.
 
-CREATE OR REPLACE FUNCTION get_student_attendance_summary(
-  p_student_id UUID,
-  p_semester TEXT,
-  p_academic_year TEXT
+DROP FUNCTION IF EXISTS public.get_student_attendance_summary(UUID, TEXT, TEXT) CASCADE;
+CREATE OR REPLACE FUNCTION public.get_student_attendance_summary(
+  student_id UUID,
+  semester_filter TEXT,
+  academic_year_filter TEXT
 )
 RETURNS TABLE (
+  unit_id UUID,
   unit_name TEXT,
   total_classes BIGINT,
-  attended BIGINT,
-  percentage NUMERIC
+  classes_attended BIGINT
 ) 
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -406,35 +407,30 @@ BEGIN
   -- Defensive sanity check: Ensure targeted profile is a student
   IF NOT EXISTS (
     SELECT 1 FROM public.profiles 
-    WHERE id = p_student_id AND role = 'student'
+    WHERE id = student_id AND role = 'student'
   ) THEN
-    RAISE EXCEPTION 'Profile ID % is not associated with a Student role', p_student_id;
+    RAISE EXCEPTION 'Profile ID % is not associated with a Student role', student_id;
   END IF;
 
   RETURN QUERY
   SELECT 
+    cu.id AS unit_id,
     cu.name AS unit_name,
     COUNT(a.id) AS total_classes,
-    COUNT(CASE WHEN a.status = 'Present' THEN 1 END) AS attended,
-    CASE 
-      WHEN COUNT(a.id) > 0 THEN 
-        ROUND((COUNT(CASE WHEN a.status = 'Present' THEN 1 END)::NUMERIC / COUNT(a.id)::NUMERIC) * 100, 1)
-      ELSE 
-        100.0 -- Default rate is 100% when no classes have been conducted yet
-    END AS percentage
+    COUNT(CASE WHEN a.status = 'Present' THEN 1 END) AS classes_attended
   FROM 
     public.course_units cu
   JOIN 
-    public.profiles p ON p.id = p_student_id
+    public.profiles p ON p.id = student_id
   -- Ensures we only query units that are registered under the student's Course
-  WHERE 
-    cu.course_id = p.course_id
   -- LEFT JOIN includes all units, even if no attendance has been marked yet
   LEFT JOIN 
     public.attendance a ON a.unit_id = cu.id 
-                 AND a.student_id = p_student_id
-                 AND a.semester = p_semester
-                 AND a.academic_year = p_academic_year
+                 AND a.student_id = student_id
+                 AND a.semester = semester_filter
+                 AND a.academic_year = academic_year_filter
+  WHERE 
+    cu.course_id = p.course_id
   GROUP BY 
     cu.id, cu.name
   ORDER BY 
