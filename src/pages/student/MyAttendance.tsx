@@ -46,9 +46,9 @@ export default function MyAttendance({ state, studentId }: MyAttendanceProps) {
       const { data: rpcData, error: rpcErr } = await supabase.rpc(
         'get_student_attendance_summary', 
         { 
-          student_id: studentId,
-          semester_filter: semester,
-          academic_year_filter: academicYear
+          p_student_id: studentId,
+          p_semester_filter: semester,
+          p_academic_year_filter: academicYear
         }
       );
 

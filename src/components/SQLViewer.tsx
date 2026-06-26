@@ -390,9 +390,9 @@ EXECUTE FUNCTION public.handle_new_user_signup();
 
 DROP FUNCTION IF EXISTS public.get_student_attendance_summary(UUID, TEXT, TEXT) CASCADE;
 CREATE OR REPLACE FUNCTION public.get_student_attendance_summary(
-  student_id UUID,
-  semester_filter TEXT,
-  academic_year_filter TEXT
+  p_student_id UUID,
+  p_semester_filter TEXT,
+  p_academic_year_filter TEXT
 )
 RETURNS TABLE (
   unit_id UUID,
@@ -406,10 +406,10 @@ AS $$
 BEGIN
   -- Defensive sanity check: Ensure targeted profile is a student
   IF NOT EXISTS (
-    SELECT 1 FROM public.profiles 
-    WHERE id = student_id AND role = 'student'
+    SELECT 1 FROM public.profiles p
+    WHERE p.id = p_student_id AND p.role = 'student'
   ) THEN
-    RAISE EXCEPTION 'Profile ID % is not associated with a Student role', student_id;
+    RAISE EXCEPTION 'Profile ID % is not associated with a Student role', p_student_id;
   END IF;
 
   RETURN QUERY
@@ -421,14 +421,14 @@ BEGIN
   FROM 
     public.course_units cu
   JOIN 
-    public.profiles p ON p.id = student_id
+    public.profiles p ON p.id = p_student_id
   -- Ensures we only query units that are registered under the student's Course
   -- LEFT JOIN includes all units, even if no attendance has been marked yet
   LEFT JOIN 
     public.attendance a ON a.unit_id = cu.id 
-                 AND a.student_id = student_id
-                 AND a.semester = semester_filter
-                 AND a.academic_year = academic_year_filter
+                 AND a.student_id = p_student_id
+                 AND a.semester = p_semester_filter
+                 AND a.academic_year = p_academic_year_filter
   WHERE 
     cu.course_id = p.course_id
   GROUP BY 

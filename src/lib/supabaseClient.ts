@@ -307,9 +307,9 @@ if (isSupabaseReal()) {
       }
       
       if (name === 'get_student_attendance_summary') {
-        const studentId = args.student_id;
-        const semester = args.semester_filter;
-        const academicYear = args.academic_year_filter;
+        const studentId = args.p_student_id || args.student_id;
+        const semester = args.p_semester_filter || args.semester_filter;
+        const academicYear = args.p_academic_year_filter || args.academic_year_filter;
         
         const student = getLocalData('profiles').find(p => p.id === studentId);
         if (!student || !student.course_id) return { data: [], error: null };
