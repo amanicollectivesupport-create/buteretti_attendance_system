@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { UserRole } from '../types';
@@ -10,7 +10,8 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, role, loading } = useAuth();
+  const { user, role, mustChangePassword, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -32,6 +33,15 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     if (!role || !rolesArray.includes(role)) {
       return <Navigate to="/unauthorized" replace />;
     }
+  }
+
+  // Force password change for lecturers on first login
+  if (
+    role === 'lecturer' &&
+    mustChangePassword === true &&
+    location.pathname !== '/lecturer/change-password'
+  ) {
+    return <Navigate to="/lecturer/change-password" replace />;
   }
 
   return <>{children}</>;

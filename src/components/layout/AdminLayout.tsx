@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import ButereLogo from '../ButereLogo';
 import { 
   School, LayoutDashboard, Users, FileText, BookmarkPlus, 
-  LogOut, Menu, X, User, Settings, ShieldCheck, UserCheck, Database
+  LogOut, Menu, X, User, Settings, ShieldCheck, UserCheck, Database, ClipboardCheck
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -42,6 +42,12 @@ export default function AdminLayout() {
       label: 'Assign Units',
       path: '/admin/assign-units',
       icon: BookmarkPlus,
+    },
+    {
+      id: 'admin-corrections',
+      label: 'Correction Requests',
+      path: '/admin/correction-requests',
+      icon: ClipboardCheck,
     },
     {
       id: 'admin-reps',

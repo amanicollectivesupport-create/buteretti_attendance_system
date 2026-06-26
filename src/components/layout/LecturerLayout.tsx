@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import ButereLogo from '../ButereLogo';
+import { useCorrectionRequests } from '../../hooks/useCorrectionRequests';
+import { supabase, isSupabaseReal } from '../../lib/supabaseClient';
 import { 
   School, LayoutDashboard, BookmarkCheck, BookOpen, 
-  LogOut, Menu, X, User, ShieldCheck, GraduationCap 
+  LogOut, Menu, X, User, ShieldCheck, GraduationCap, ClipboardCheck
 } from 'lucide-react';
 
 export default function LecturerLayout() {
@@ -12,6 +14,42 @@ export default function LecturerLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { getLecturerRequests } = useCorrectionRequests();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const fetchPendingCount = async () => {
+    if (!profile?.id) return;
+    try {
+      const res = await getLecturerRequests();
+      setPendingCount(res.pending.length);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    fetchPendingCount();
+
+    if (!isSupabaseReal()) return;
+
+    const channel = supabase
+      .channel('layout_cr_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'correction_requests',
+        filter: `lecturer_id=eq.${profile.id}`
+      }, () => {
+        fetchPendingCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.id]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -37,6 +75,13 @@ export default function LecturerLayout() {
       path: '/lecturer/units',
       icon: BookOpen,
     },
+    {
+      id: 'lecturer-corrections',
+      label: 'Correction Requests',
+      path: '/lecturer/correction-requests',
+      icon: ClipboardCheck,
+      badge: pendingCount > 0 ? pendingCount : null
+    }
   ];
 
   return (
@@ -85,14 +130,21 @@ export default function LecturerLayout() {
                 id={`sidebar-${item.id}`}
                 to={item.path}
                 onClick={() => setIsSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                className={`flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
                   isActive 
                     ? 'bg-emerald-600 text-white shadow-md' 
                     : 'hover:bg-slate-800/60 hover:text-white text-slate-400'
                 }`}
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                {item.label}
+                <div className="flex items-center gap-3">
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{item.label}</span>
+                </div>
+                {item.badge !== undefined && item.badge !== null && (
+                  <span className="px-1.5 py-0.5 text-[9px] font-black bg-amber-500 text-white rounded-full">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

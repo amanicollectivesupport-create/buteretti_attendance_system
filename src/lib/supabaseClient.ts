@@ -189,6 +189,25 @@ class MockQueryBuilder {
       }
     };
   }
+
+  async update(values: any) {
+    const current = getLocalData(this.table);
+    const matchedIds = this.data.map(item => item.id);
+    const updated = current.map(item => {
+      if (matchedIds.includes(item.id)) {
+        return { ...item, ...values };
+      }
+      return item;
+    });
+    saveLocalData(this.table, updated);
+    this.data = this.data.map(item => {
+      if (matchedIds.includes(item.id)) {
+        return { ...item, ...values };
+      }
+      return item;
+    });
+    return { data: this.data, error: null };
+  }
 }
 
 if (isSupabaseReal()) {
@@ -334,6 +353,51 @@ if (isSupabaseReal()) {
           };
         });
         return { data, error: null };
+      }
+
+      if (name === 'approve_correction_request') {
+        const reqId = args.p_request_id;
+        const note = args.p_reviewer_note;
+        
+        const requests = getLocalData('correction_requests');
+        const reqIdx = requests.findIndex(r => r.id === reqId);
+        if (reqIdx === -1) return { data: null, error: { message: 'Request not found' } };
+        
+        requests[reqIdx].status = 'approved';
+        requests[reqIdx].reviewer_note = note;
+        requests[reqIdx].reviewed_at = new Date().toISOString();
+        saveLocalData('correction_requests', requests);
+        
+        // Update actual attendance
+        const attId = requests[reqIdx].attendance_id;
+        const attendance = getLocalData('attendance');
+        const attIdx = attendance.findIndex(a => a.id === attId);
+        if (attIdx !== -1) {
+          attendance[attIdx].status = 'Present';
+          saveLocalData('attendance', attendance);
+        }
+        
+        return { data: null, error: null };
+      }
+      
+      if (name === 'reject_correction_request') {
+        const reqId = args.p_request_id;
+        const note = args.p_reviewer_note;
+        
+        if (!note || !note.trim()) {
+          return { data: null, error: { message: 'A reason is required when rejecting a request' } };
+        }
+        
+        const requests = getLocalData('correction_requests');
+        const reqIdx = requests.findIndex(r => r.id === reqId);
+        if (reqIdx === -1) return { data: null, error: { message: 'Request not found' } };
+        
+        requests[reqIdx].status = 'rejected';
+        requests[reqIdx].reviewer_note = note;
+        requests[reqIdx].reviewed_at = new Date().toISOString();
+        saveLocalData('correction_requests', requests);
+        
+        return { data: null, error: null };
       }
       
       return { data: null, error: { message: `RPC ${name} is not mocked` } };

@@ -37,6 +37,7 @@ export interface Profile {
   phone: string;
   created_at: string;
   auth_linked?: boolean;
+  must_change_password?: boolean;
 }
 
 export interface LecturerUnit {

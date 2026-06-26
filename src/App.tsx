@@ -27,9 +27,15 @@ import LecturerLayout from './components/layout/LecturerLayout';
 import LecturerDashboardView from './pages/lecturer/Dashboard';
 import LecturerMarkAttendanceView from './pages/lecturer/MarkAttendance';
 import LecturerMyUnitsView from './pages/lecturer/MyUnits';
+import CorrectionRequests from './pages/lecturer/CorrectionRequests';
+import ChangePassword from './pages/lecturer/ChangePassword';
 import StudentLayout from './components/layout/StudentLayout';
 import MyAttendance from './pages/student/MyAttendance';
+import CorrectionRequestsAdmin from './pages/admin/CorrectionRequestsAdmin';
 import Profile from './pages/student/Profile';
+import Dashboard from './pages/student/Dashboard';
+import Timetable from './pages/student/Timetable';
+import Settings from './pages/student/Settings';
 import ButereLogo from './components/ButereLogo';
 import { getDatabaseState, saveDatabaseState } from './utils/mockDatabase';
 import { DatabaseState } from './types';
@@ -338,12 +344,23 @@ function AppContent() {
       >
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboardView state={dbState} />} />
-        <Route path="users" element={<ManageUsersView state={dbState} onUpdate={handleUpdateDatabase} />} />
+        <Route path="users" element={<ManageUsersView state={dbState} onUpdate={handleUpdateDatabase} onRefresh={loadStateFromSupabase} />} />
         <Route path="pre-register" element={<PreRegisterStudents state={dbState} onRefresh={loadStateFromSupabase} />} />
         <Route path="assign-units" element={<AssignLecturerUnitsView state={dbState} onUpdate={handleUpdateDatabase} />} />
         <Route path="reports" element={<AdminReports state={dbState} onRefresh={loadStateFromSupabase} />} />
+        <Route path="correction-requests" element={<CorrectionRequestsAdmin />} />
         <Route path="database" element={<DatabaseSettings state={dbState} onUpdate={handleUpdateDatabase} />} />
       </Route>
+
+      {/* Lecturer Forced Change Password (Standalone - no layout) */}
+      <Route
+        path="/lecturer/change-password"
+        element={
+          <ProtectedRoute requiredRole="lecturer">
+            <ChangePassword />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Lecturer Protected Routes */}
       <Route
@@ -358,6 +375,7 @@ function AppContent() {
         <Route path="dashboard" element={<LecturerDashboardView state={dbState} lecturerId={profile?.id || user?.id || ''} />} />
         <Route path="mark-attendance" element={<LecturerMarkAttendanceView state={dbState} lecturerId={profile?.id || user?.id || ''} onUpdate={handleUpdateDatabase} />} />
         <Route path="units" element={<LecturerMyUnitsView state={dbState} lecturerId={profile?.id || user?.id || ''} />} />
+        <Route path="correction-requests" element={<CorrectionRequests />} />
       </Route>
 
       {/* Student Protected Routes */}
@@ -369,10 +387,12 @@ function AppContent() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="attendance" replace />} />
-        <Route path="dashboard" element={<Navigate to="../attendance" replace />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="attendance" element={<MyAttendance state={dbState} studentId={profile?.id || user?.id || ''} />} />
+        <Route path="timetable" element={<Timetable />} />
         <Route path="profile" element={<Profile state={dbState} />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
 
       {/* Wildcard redirects to respective dashboard or login */}

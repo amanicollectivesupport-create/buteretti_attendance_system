@@ -627,3 +627,181 @@ USING (
 -- Triggers created : tr_on_profile_link_auth
 -- RLS enabled on   : all 6 tables
 -- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- 7. CORRECTION REQUESTS MODULE
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.correction_requests (
+  id             UUID        PRIMARY KEY 
+                             DEFAULT gen_random_uuid(),
+  student_id     UUID        NOT NULL 
+                             REFERENCES public.profiles(id) 
+                             ON DELETE CASCADE,
+  attendance_id  UUID        NOT NULL 
+                             REFERENCES public.attendance(id) 
+                             ON DELETE CASCADE,
+  lecturer_id    UUID        NOT NULL 
+                             REFERENCES public.profiles(id) 
+                             ON DELETE CASCADE,
+  unit_id        UUID        NOT NULL 
+                             REFERENCES public.course_units(id) 
+                             ON DELETE CASCADE,
+  original_status TEXT       NOT NULL,
+  reason         TEXT        NOT NULL,
+  status         TEXT        NOT NULL DEFAULT 'pending'
+                             CHECK (status IN 
+                             ('pending','approved','rejected')),
+  reviewer_note  TEXT,
+  reviewed_at    TIMESTAMPTZ,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  -- One active request per attendance record at a time
+  CONSTRAINT unique_active_request 
+    UNIQUE (attendance_id, status) 
+    DEFERRABLE INITIALLY DEFERRED
+);
+
+-- Index for fast lookups
+CREATE INDEX IF NOT EXISTS idx_cr_student   
+  ON public.correction_requests(student_id);
+CREATE INDEX IF NOT EXISTS idx_cr_lecturer  
+  ON public.correction_requests(lecturer_id);
+CREATE INDEX IF NOT EXISTS idx_cr_status    
+  ON public.correction_requests(status);
+CREATE INDEX IF NOT EXISTS idx_cr_unit      
+  ON public.correction_requests(unit_id);
+
+ALTER TABLE public.correction_requests 
+  ENABLE ROW LEVEL SECURITY;
+
+-- Students can view and create their own requests only
+DROP POLICY IF EXISTS "cr_student_select" 
+  ON public.correction_requests;
+CREATE POLICY "cr_student_select"
+ON public.correction_requests FOR SELECT
+TO authenticated
+USING (student_id = auth.uid());
+
+DROP POLICY IF EXISTS "cr_student_insert" 
+  ON public.correction_requests;
+CREATE POLICY "cr_student_insert"
+ON public.correction_requests FOR INSERT
+TO authenticated
+WITH CHECK (student_id = auth.uid());
+
+-- Lecturers can view requests assigned to them and update 
+-- (approve/reject) them
+DROP POLICY IF EXISTS "cr_lecturer_select" 
+  ON public.correction_requests;
+CREATE POLICY "cr_lecturer_select"
+ON public.correction_requests FOR SELECT
+TO authenticated
+USING (lecturer_id = auth.uid());
+
+DROP POLICY IF EXISTS "cr_lecturer_update" 
+  ON public.correction_requests;
+CREATE POLICY "cr_lecturer_update"
+ON public.correction_requests FOR UPDATE
+TO authenticated
+USING (lecturer_id = auth.uid())
+WITH CHECK (lecturer_id = auth.uid());
+
+-- Admins have full control
+DROP POLICY IF EXISTS "cr_admin_all" 
+  ON public.correction_requests;
+CREATE POLICY "cr_admin_all"
+ON public.correction_requests FOR ALL
+TO authenticated
+USING (public.is_admin())
+WITH CHECK (public.is_admin());
+
+-- Transaction functions
+CREATE OR REPLACE FUNCTION public.approve_correction_request(
+  p_request_id    UUID,
+  p_reviewer_note TEXT DEFAULT NULL
+)
+RETURNS void
+SECURITY DEFINER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_attendance_id UUID;
+  v_lecturer_id   UUID;
+BEGIN
+  -- Verify the caller is the assigned lecturer or admin
+  SELECT attendance_id, lecturer_id
+  INTO v_attendance_id, v_lecturer_id
+  FROM public.correction_requests
+  WHERE id = p_request_id AND status = 'pending';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 
+      'Request not found or already reviewed';
+  END IF;
+
+  IF v_lecturer_id <> auth.uid() AND NOT public.is_admin() 
+  THEN
+    RAISE EXCEPTION 
+      'You are not authorized to review this request';
+  END IF;
+
+  -- Update correction request
+  UPDATE public.correction_requests
+  SET
+    status        = 'approved',
+    reviewer_note = p_reviewer_note,
+    reviewed_at   = now()
+  WHERE id = p_request_id;
+
+  -- Update the actual attendance record to Present
+  UPDATE public.attendance
+  SET status = 'Present'
+  WHERE id = v_attendance_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.reject_correction_request(
+  p_request_id    UUID,
+  p_reviewer_note TEXT
+)
+RETURNS void
+SECURITY DEFINER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_lecturer_id UUID;
+BEGIN
+  SELECT lecturer_id
+  INTO v_lecturer_id
+  FROM public.correction_requests
+  WHERE id = p_request_id AND status = 'pending';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 
+      'Request not found or already reviewed';
+  END IF;
+
+  IF v_lecturer_id <> auth.uid() AND NOT public.is_admin() 
+  THEN
+    RAISE EXCEPTION 
+      'You are not authorized to review this request';
+  END IF;
+
+  -- Rejection requires a reason — enforce it
+  IF p_reviewer_note IS NULL OR 
+     trim(p_reviewer_note) = '' THEN
+    RAISE EXCEPTION 
+      'A reason is required when rejecting a request';
+  END IF;
+
+  UPDATE public.correction_requests
+  SET
+    status        = 'rejected',
+    reviewer_note = p_reviewer_note,
+    reviewed_at   = now()
+  WHERE id = p_request_id;
+
+  -- attendance record stays unchanged on rejection
+END;
+$$;

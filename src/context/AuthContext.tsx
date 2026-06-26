@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   role: UserRole | null;
+  mustChangePassword: boolean | undefined;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -111,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, profile, role, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, role, mustChangePassword: profile?.must_change_password, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
