@@ -1,0 +1,6 @@
+{
+  "name": "Butere TTI Attendance System",
+  "description": "Student Attendance Management System for Butere Technical Training Institute (Butere TTI) with Supabase SQL schema, RLS policies, and export capabilities.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
