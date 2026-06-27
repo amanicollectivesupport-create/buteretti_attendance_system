@@ -341,13 +341,40 @@ export default function ManageUsers({ state, onUpdate, onRefresh }) {
     setActionLoading(true);
 
     try {
-      const newProfiles = state.profiles.filter(p => p.id !== selectedUser.id);
-      
-      // Sync and update
-      await onUpdate({
-        ...state,
-        profiles: newProfiles
+      // 1. Get session token for headers
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        throw new Error('No active authentication session found.');
+      }
+
+      // 2. Call delete-user Edge Function
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`;
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId: selectedUser.id })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      // 3. Trigger reload of state
+      if (onRefresh) {
+        await onRefresh();
+      } else {
+        const newProfiles = state.profiles.filter(p => p.id !== selectedUser.id);
+        await onUpdate({
+          ...state,
+          profiles: newProfiles
+        });
+      }
 
       toast.success('Profile deleted successfully.');
       setIsDeleteModalOpen(false);

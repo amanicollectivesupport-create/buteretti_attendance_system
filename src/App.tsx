@@ -32,6 +32,8 @@ import ChangePassword from './pages/lecturer/ChangePassword';
 import StudentLayout from './components/layout/StudentLayout';
 import MyAttendance from './pages/student/MyAttendance';
 import CorrectionRequestsAdmin from './pages/admin/CorrectionRequestsAdmin';
+import Courses from './pages/admin/Courses';
+import AdminSettings from './pages/admin/Settings';
 import Profile from './pages/student/Profile';
 import Dashboard from './pages/student/Dashboard';
 import Timetable from './pages/student/Timetable';
@@ -346,10 +348,14 @@ function AppContent() {
         <Route path="dashboard" element={<AdminDashboardView state={dbState} />} />
         <Route path="users" element={<ManageUsersView state={dbState} onUpdate={handleUpdateDatabase} onRefresh={loadStateFromSupabase} />} />
         <Route path="pre-register" element={<PreRegisterStudents state={dbState} onRefresh={loadStateFromSupabase} />} />
+        <Route path="courses" element={<Courses state={dbState} onUpdate={handleUpdateDatabase} onRefresh={loadStateFromSupabase} />} />
         <Route path="assign-units" element={<AssignLecturerUnitsView state={dbState} onUpdate={handleUpdateDatabase} />} />
         <Route path="reports" element={<AdminReports state={dbState} onRefresh={loadStateFromSupabase} />} />
+        <Route path="corrections" element={<CorrectionRequestsAdmin />} />
         <Route path="correction-requests" element={<CorrectionRequestsAdmin />} />
+        <Route path="seed" element={<DatabaseSettings state={dbState} onUpdate={handleUpdateDatabase} />} />
         <Route path="database" element={<DatabaseSettings state={dbState} onUpdate={handleUpdateDatabase} />} />
+        <Route path="settings" element={<AdminSettings />} />
       </Route>
 
       {/* Lecturer Forced Change Password (Standalone - no layout) */}

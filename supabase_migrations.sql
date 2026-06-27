@@ -805,3 +805,74 @@ BEGIN
   -- attendance record stays unchanged on rejection
 END;
 $$;
+
+-- Institution-wide average attendance
+CREATE OR REPLACE FUNCTION 
+  public.get_institution_attendance_average(
+    p_semester TEXT,
+    p_academic_year TEXT
+  )
+RETURNS NUMERIC
+SECURITY DEFINER
+LANGUAGE plpgsql AS $$
+DECLARE v_avg NUMERIC;
+BEGIN
+  SELECT ROUND(AVG(sub.pct), 1) INTO v_avg
+  FROM (
+    SELECT 
+      CASE WHEN COUNT(a.id) > 0 THEN
+        ROUND(COUNT(CASE WHEN a.status='Present' 
+              THEN 1 END)::NUMERIC / COUNT(a.id) * 100, 1)
+      ELSE 100.0 END AS pct
+    FROM public.profiles p
+    JOIN public.course_units cu 
+      ON cu.course_id = p.course_id
+    LEFT JOIN public.attendance a 
+      ON a.student_id = p.id 
+     AND a.unit_id = cu.id
+     AND a.semester = p_semester
+     AND a.academic_year = p_academic_year
+    WHERE p.role = 'student'
+    GROUP BY p.id, cu.id
+  ) sub;
+  RETURN COALESCE(v_avg, 100.0);
+END;
+$$;
+
+-- All units attendance summary for bar chart
+CREATE OR REPLACE FUNCTION 
+  public.get_all_units_attendance_summary(
+    p_semester TEXT,
+    p_academic_year TEXT
+  )
+RETURNS TABLE (
+  unit_id   UUID,
+  unit_name TEXT,
+  course_name TEXT,
+  total_classes BIGINT,
+  percentage NUMERIC
+)
+SECURITY DEFINER
+LANGUAGE plpgsql AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    cu.id,
+    cu.name AS unit_name,
+    co.name AS course_name,
+    COUNT(a.id) AS total_classes,
+    CASE WHEN COUNT(a.id) > 0 THEN
+      ROUND(COUNT(CASE WHEN a.status='Present' 
+            THEN 1 END)::NUMERIC / COUNT(a.id) * 100, 1)
+    ELSE 100.0 END AS percentage
+  FROM public.course_units cu
+  JOIN public.courses co ON co.id = cu.course_id
+  LEFT JOIN public.attendance a 
+    ON a.unit_id = cu.id
+   AND a.semester = p_semester
+   AND a.academic_year = p_academic_year
+  GROUP BY cu.id, cu.name, co.name
+  ORDER BY percentage ASC
+  LIMIT 6;
+END;
+$$;

@@ -24,9 +24,9 @@ export default function CorrectionRequestsAdmin() {
     try {
       const res = await getAllRequestsAdmin();
       setData(res);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to load global requests:', e);
-      toast.error('Could not retrieve global correction requests.');
+      toast.error(e.message || 'Could not retrieve global correction requests.');
     } finally {
       setLoading(false);
     }

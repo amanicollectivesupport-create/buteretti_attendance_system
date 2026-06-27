@@ -249,29 +249,26 @@ export function useCorrectionRequests() {
         original_status, created_at, reviewed_at,
         course_units!unit_id ( name ),
         attendance!attendance_id ( date ),
-        profiles!student_id ( full_name, adm_no ),
-        profiles!lecturer_id ( full_name )
+        student:profiles!student_id ( full_name, adm_no ),
+        lecturer:profiles!lecturer_id ( full_name )
       `)
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching admin requests:', error);
-      return { pending: [], approved: [], rejected: [] };
+      throw new Error(`Error fetching admin requests: ${error.message} (${error.code || 'no code'})`);
     }
 
     const records = data || [];
     const mapped = records.map((r: any) => {
       // Standardize the student profile join and lecturer profile join names so they are safe
-      const profilesNode = r.profiles || r['profiles!student_id'] || {};
-      const profilesStudent = Array.isArray(profilesNode) ? profilesNode[0] : profilesNode;
-      
-      const lecturerNode = r['profiles!lecturer_id'] || {};
-      const profilesLecturer = Array.isArray(lecturerNode) ? lecturerNode[0] : lecturerNode;
+      const profilesStudent = r.student || r.profiles || r['profiles!student_id'] || {};
+      const profilesLecturer = r.lecturer || r['profiles!lecturer_id'] || {};
 
       return {
         ...r,
-        profiles: profilesStudent,
-        lecturer: profilesLecturer
+        profiles: Array.isArray(profilesStudent) ? profilesStudent[0] : profilesStudent,
+        lecturer: Array.isArray(profilesLecturer) ? profilesLecturer[0] : profilesLecturer
       };
     });
 
