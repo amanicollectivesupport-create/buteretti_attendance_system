@@ -177,7 +177,7 @@ export function useCorrectionRequests() {
         id, status, reason, original_status, created_at, reviewer_note, reviewed_at,
         course_units!unit_id ( name ),
         attendance!attendance_id ( date ),
-        profiles!student_id ( full_name, adm_no )
+        profiles:profiles!student_id ( full_name, adm_no )
       `)
       .eq('lecturer_id', profile.id)
       .order('created_at', { ascending: false });
@@ -188,10 +188,18 @@ export function useCorrectionRequests() {
     }
 
     const records = data || [];
+    const mapped = records.map((r: any) => {
+      const profilesStudent = r.profiles || r['profiles!student_id'] || {};
+      return {
+        ...r,
+        profiles: Array.isArray(profilesStudent) ? profilesStudent[0] : profilesStudent
+      };
+    });
+
     return {
-      pending: records.filter((r: any) => r.status === 'pending'),
-      approved: records.filter((r: any) => r.status === 'approved'),
-      rejected: records.filter((r: any) => r.status === 'rejected')
+      pending: mapped.filter((r: any) => r.status === 'pending'),
+      approved: mapped.filter((r: any) => r.status === 'approved'),
+      rejected: mapped.filter((r: any) => r.status === 'rejected')
     };
   };
 
