@@ -552,7 +552,7 @@ export default function Landing() {
           <div className="text-center sm:text-left">
             <span className="text-xs font-semibold text-gray-800 block">Butere TTI Attendance System</span>
             <span className="text-[10px] text-gray-400 block mt-1 font-medium">
-              &copy; 2025 Butere Technical Training Institute
+              &copy; 2026 Butere Technical Training Institute
             </span>
           </div>
 
