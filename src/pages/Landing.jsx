@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -16,18 +16,70 @@ import {
   UserCircle, 
   Check, 
   ChevronRight, 
-  Loader2 
+  Loader2,
+  ArrowUp
 } from 'lucide-react';
+
+
+const FeatureCard = React.memo(function FeatureCard({ title, description, icon: Icon }) {
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
+      <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
+        <Icon className="w-5 h-5 text-blue-600" />
+      </div>
+      <h3 className="text-sm font-semibold text-gray-900 mb-1.5">{title}</h3>
+      <p className="text-[11px] text-gray-500 leading-relaxed">
+        {description}
+      </p>
+    </div>
+  );
+});
+
+const RoleCard = React.memo(function RoleCard({ title, description, icon: Icon, checklist }) {
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+      <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
+        <Icon className="w-6 h-6 text-blue-600" />
+      </div>
+      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+      <p className="text-[11px] text-gray-500 mt-1.5 mb-4 leading-relaxed">
+        {description}
+      </p>
+      <ul className="space-y-2 pt-2 border-t border-gray-50">
+        {checklist.map((item, index) => (
+          <li key={index} className="flex items-start gap-2 text-[11px] text-gray-600">
+            <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+});
 
 export default function Landing() {
   const navigate = useNavigate();
   const { user, role, loading } = useAuth();
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
     if (!loading && user && role) {
       navigate(`/${role}/dashboard`, { replace: true });
     }
   }, [user, role, loading, navigate]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const scrollTo = (id) => {
     const element = document.getElementById(id);
@@ -81,6 +133,12 @@ export default function Landing() {
             className="text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors cursor-pointer"
           >
             Roles
+          </button>
+          <button 
+            onClick={() => scrollTo('faq')}
+            className="text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors cursor-pointer"
+          >
+            FAQ
           </button>
         </div>
 
@@ -246,71 +304,36 @@ export default function Landing() {
 
         {/* 6 FEATURE CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {/* Card 1 */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
-            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
-              <ClipboardCheck className="w-5 h-5 text-blue-600" />
-            </div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1.5">Fast attendance marking</h3>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              Lecturers mark an entire class in under 2 minutes. Bulk actions and upsert protection prevent double marking.
-            </p>
-          </div>
-
-          {/* Card 2 */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
-            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
-              <AlertCircle className="w-5 h-5 text-blue-600" />
-            </div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1.5">At-risk alerts</h3>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              Students below 75% are automatically flagged. Admins and lecturers see who's at risk of being barred before it's too late.
-            </p>
-          </div>
-
-          {/* Card 3 */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
-            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
-              <MessageSquareWarning className="w-5 h-5 text-blue-600" />
-            </div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1.5">Correction requests</h3>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              Students can dispute wrong marks with a written reason. Lecturers review and approve or reject — all tracked and audited.
-            </p>
-          </div>
-
-          {/* Card 4 */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
-            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
-              <ChartBar className="w-5 h-5 text-blue-600" />
-            </div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1.5">Reports and exports</h3>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              Generate class, daily, and at-risk reports. Export to PDF or Excel with institution branding and custom date ranges.
-            </p>
-          </div>
-
-          {/* Card 5 */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
-            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
-              <Lock className="w-5 h-5 text-blue-600" />
-            </div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1.5">Secure by design</h3>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              Row-level security ensures each role sees only their data. Lecturers are forced to change temporary passwords on first login.
-            </p>
-          </div>
-
-          {/* Card 6 */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
-            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
-              <RefreshCw className="w-5 h-5 text-blue-600" />
-            </div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1.5">Live updates</h3>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              Attendance changes, correction approvals, and notification badges update in real time — no page refresh needed.
-            </p>
-          </div>
+          <FeatureCard 
+            title="Fast attendance marking"
+            description="Lecturers mark an entire class in under 2 minutes. Bulk actions and upsert protection prevent double marking."
+            icon={ClipboardCheck}
+          />
+          <FeatureCard 
+            title="At-risk alerts"
+            description="Students below 75% are automatically flagged. Admins and lecturers see who's at risk of being barred before it's too late."
+            icon={AlertCircle}
+          />
+          <FeatureCard 
+            title="Correction requests"
+            description="Students can dispute wrong marks with a written reason. Lecturers review and approve or reject — all tracked and audited."
+            icon={MessageSquareWarning}
+          />
+          <FeatureCard 
+            title="Reports and exports"
+            description="Generate class, daily, and at-risk reports. Export to PDF or Excel with institution branding and custom date ranges."
+            icon={ChartBar}
+          />
+          <FeatureCard 
+            title="Secure by design"
+            description="Row-level security ensures each role sees only their data. Lecturers are forced to change temporary passwords on first login."
+            icon={Lock}
+          />
+          <FeatureCard 
+            title="Live updates"
+            description="Attendance changes, correction approvals, and notification badges update in real time — no page refresh needed."
+            icon={RefreshCw}
+          />
         </div>
       </section>
 
@@ -329,104 +352,42 @@ export default function Landing() {
 
           {/* 3 ROLE CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Card 1 — Admin */}
-            <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
-              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
-                <ShieldCheck className="w-6 h-6 text-blue-600" />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-900">Administrator</h3>
-              <p className="text-[11px] text-gray-500 mt-1.5 mb-4 leading-relaxed">
-                Full control over the institution's academic structure and users.
-              </p>
-              <ul className="space-y-2 pt-2 border-t border-gray-50">
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Create lecturer and student accounts</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Manage courses, units, and departments</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Assign units to lecturers</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Generate institution-wide reports</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Oversee all correction requests</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Card 2 — Lecturer */}
-            <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
-              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
-                <GraduationCap className="w-6 h-6 text-blue-600" />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-900">Lecturer</h3>
-              <p className="text-[11px] text-gray-500 mt-1.5 mb-4 leading-relaxed">
-                Mark attendance for assigned units and manage student disputes.
-              </p>
-              <ul className="space-y-2 pt-2 border-t border-gray-50">
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Mark attendance for assigned units</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>View today's class schedule</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Review correction requests</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Monitor at-risk students</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Approve or reject disputes</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Card 3 — Student */}
-            <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
-              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
-                <UserCircle className="w-6 h-6 text-blue-600" />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-900">Student</h3>
-              <p className="text-[11px] text-gray-500 mt-1.5 mb-4 leading-relaxed">
-                Monitor personal attendance and raise disputes for incorrect records.
-              </p>
-              <ul className="space-y-2 pt-2 border-t border-gray-50">
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>View attendance per unit</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Track overall attendance rate</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>See at-risk warnings early</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Raise correction requests</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-gray-600">
-                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                  <span>Export personal PDF report</span>
-                </li>
-              </ul>
-            </div>
+            <RoleCard 
+              title="Administrator"
+              description="Full control over the institution's academic structure and users."
+              icon={ShieldCheck}
+              checklist={[
+                "Create lecturer and student accounts",
+                "Manage courses, units, and departments",
+                "Assign units to lecturers",
+                "Generate institution-wide reports",
+                "Oversee all correction requests"
+              ]}
+            />
+            <RoleCard 
+              title="Lecturer"
+              description="Mark attendance for assigned units and manage student disputes."
+              icon={GraduationCap}
+              checklist={[
+                "Mark attendance for assigned units",
+                "View today's class schedule",
+                "Review correction requests",
+                "Monitor at-risk students",
+                "Approve or reject disputes"
+              ]}
+            />
+            <RoleCard 
+              title="Student"
+              description="Monitor personal attendance and raise disputes for incorrect records."
+              icon={UserCircle}
+              checklist={[
+                "View attendance per unit",
+                "Track overall attendance rate",
+                "See at-risk warnings early",
+                "Raise correction requests",
+                "Export personal PDF report"
+              ]}
+            />
           </div>
         </div>
       </section>
@@ -508,6 +469,58 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* SECTION 5.5 — FAQ */}
+      <section id="faq" className="py-16 px-4 md:px-8 border-b border-gray-100 bg-white">
+        <div className="max-w-3xl mx-auto w-full">
+          <span className="text-xs uppercase tracking-widest text-blue-600 font-semibold text-center block mb-2">
+            FAQ
+          </span>
+          <h2 className="text-xl font-medium text-gray-900 text-center">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-xs text-gray-500 text-center max-w-sm mx-auto mt-2 mb-12">
+            Have questions about account access, password resets, or system support? We've got answers.
+          </p>
+
+          <div className="space-y-4">
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2">How do students sign up or log in?</h3>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                Students can sign up using their official Admission Number. The system validates the Admission Number against the student roster pre-registered by the administrator. Once verified, you can set your password and log in immediately.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2">How do lecturers and administrators get accounts?</h3>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                Lecturer and administrator accounts are created and provisioned directly by the Admin Office. If you are a staff member, please consult your department head or the administration office to receive your temporary login credentials.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2">How can I reset my password?</h3>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                If you have forgotten your password, go to the Sign In page and click on the "Forgot Password" link. Enter your registered email address to receive password reset instructions. For lecturers logging in for the first time, you will be prompted to change your temporary password immediately.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2">What should I do if my attendance record is incorrect?</h3>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                Students can raise a "Correction Request" directly from their dashboard. Locate the specific lecture or date with the discrepancy, click "Dispute", and provide a written reason. Your unit lecturer will review, verify, and approve or reject the request.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2">How do I reach the IT department for technical support?</h3>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                For account verification issues, database errors, or technical support, you can reach out to the Butere TTI IT support desk at the main administration block or send an email to <a href="mailto:support@buteretti.ac.ke" className="text-blue-600 font-medium hover:underline">support@buteretti.ac.ke</a>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* SECTION 6 — CTA (bottom) */}
       <section className="py-16 px-4 md:px-8 text-center bg-gray-50 border-b border-gray-100 flex flex-col items-center">
         {/* BADGE */}
@@ -566,6 +579,18 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all cursor-pointer z-50 flex items-center justify-center border border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          aria-label="Scroll to top"
+          id="scroll-to-top-btn"
+        >
+          <ArrowUp className="w-5 h-5" />
+        </button>
+      )}
     </div>
   );
 }
