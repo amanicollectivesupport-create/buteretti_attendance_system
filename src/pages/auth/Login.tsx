@@ -46,6 +46,16 @@ export default function Login() {
 
       if (authError) {
         const errMsg = authError.message.toLowerCase();
+        if (errMsg.includes('failed to fetch') || errMsg.includes('networkerror') || errMsg.includes('fetch')) {
+          if (isSupabaseReal()) {
+            localStorage.setItem('force_demo_mode', 'true');
+            setError('Database connection offline. Automatically switching to interactive Demo Mode fallback...');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+            return;
+          }
+        }
         if (errMsg.includes('invalid grant') || errMsg.includes('invalid login') || errMsg.includes('credentials')) {
           setError('Incorrect email or password. Please try again.');
         } else if (errMsg.includes('email not confirmed') || errMsg.includes('confirm')) {
@@ -66,6 +76,17 @@ export default function Login() {
           .single();
 
         if (profileError || !profileData) {
+          const profileErrMsg = profileError?.message?.toLowerCase() || '';
+          if (profileErrMsg.includes('failed to fetch') || profileErrMsg.includes('networkerror') || profileErrMsg.includes('fetch')) {
+            if (isSupabaseReal()) {
+              localStorage.setItem('force_demo_mode', 'true');
+              setError('Database connection offline. Automatically switching to interactive Demo Mode fallback...');
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
+              return;
+            }
+          }
           setError('Account not found. Contact system administrator.');
           await supabase.auth.signOut();
           setLoading(false);
@@ -84,6 +105,17 @@ export default function Login() {
         }
       }
     } catch (err: any) {
+      const errMsg = (err?.message || String(err)).toLowerCase();
+      if (errMsg.includes('failed to fetch') || errMsg.includes('networkerror') || errMsg.includes('fetch')) {
+        if (isSupabaseReal()) {
+          localStorage.setItem('force_demo_mode', 'true');
+          setError('Database connection offline. Automatically switching to interactive Demo Mode fallback...');
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+          return;
+        }
+      }
       setError(err?.message || 'Sign in failed. Please try again.');
     } finally {
       setLoading(false);

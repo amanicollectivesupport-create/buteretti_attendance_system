@@ -104,6 +104,149 @@ export function useCorrectionRequests() {
     }
   };
 
+  const getStudentRequestsManualJoin = async () => {
+    const { data: requests, error: reqError } = await supabase
+      .from('correction_requests')
+      .select('id, status, reason, reviewer_note, original_status, created_at, reviewed_at, student_id, lecturer_id, unit_id, attendance_id')
+      .eq('student_id', profile.id)
+      .order('created_at', { ascending: false });
+
+    if (reqError) {
+      console.error('Error fetching raw student requests:', reqError);
+      return [];
+    }
+
+    if (!requests || requests.length === 0) {
+      return [];
+    }
+
+    const unitIds = Array.from(new Set(requests.map(r => r.unit_id).filter(Boolean)));
+    const attendanceIds = Array.from(new Set(requests.map(r => r.attendance_id).filter(Boolean)));
+
+    const [unitsRes, attendanceRes] = await Promise.all([
+      unitIds.length > 0 ? supabase.from('course_units').select('id, name').in('id', unitIds) : Promise.resolve({ data: [] }),
+      attendanceIds.length > 0 ? supabase.from('attendance').select('id, date, status').in('id', attendanceIds) : Promise.resolve({ data: [] })
+    ]);
+
+    const unitsMap = new Map<string, any>((unitsRes.data || []).map(u => [u.id, u]));
+    const attendanceMap = new Map<string, any>((attendanceRes.data || []).map(a => [a.id, a]));
+
+    return requests.map((r: any) => {
+      const unit = unitsMap.get(r.unit_id);
+      const att = attendanceMap.get(r.attendance_id);
+
+      return {
+        ...r,
+        course_units: unit ? { name: unit.name } : { name: 'Unknown Subject' },
+        attendance: att ? { date: att.date, status: att.status } : { date: '', status: '' }
+      };
+    });
+  };
+
+  const getLecturerRequestsManualJoin = async () => {
+    const { data: requests, error: reqError } = await supabase
+      .from('correction_requests')
+      .select('id, status, reason, reviewer_note, original_status, created_at, reviewed_at, student_id, lecturer_id, unit_id, attendance_id')
+      .eq('lecturer_id', profile.id)
+      .order('created_at', { ascending: false });
+
+    if (reqError) {
+      console.error('Error fetching raw lecturer requests:', reqError);
+      return { pending: [], approved: [], rejected: [] };
+    }
+
+    if (!requests || requests.length === 0) {
+      return { pending: [], approved: [], rejected: [] };
+    }
+
+    const studentIds = Array.from(new Set(requests.map(r => r.student_id).filter(Boolean)));
+    const unitIds = Array.from(new Set(requests.map(r => r.unit_id).filter(Boolean)));
+    const attendanceIds = Array.from(new Set(requests.map(r => r.attendance_id).filter(Boolean)));
+
+    const [profilesRes, unitsRes, attendanceRes] = await Promise.all([
+      studentIds.length > 0 ? supabase.from('profiles').select('id, full_name, adm_no').in('id', studentIds) : Promise.resolve({ data: [] }),
+      unitIds.length > 0 ? supabase.from('course_units').select('id, name').in('id', unitIds) : Promise.resolve({ data: [] }),
+      attendanceIds.length > 0 ? supabase.from('attendance').select('id, date, status').in('id', attendanceIds) : Promise.resolve({ data: [] })
+    ]);
+
+    const profilesMap = new Map<string, any>((profilesRes.data || []).map(p => [p.id, p]));
+    const unitsMap = new Map<string, any>((unitsRes.data || []).map(u => [u.id, u]));
+    const attendanceMap = new Map<string, any>((attendanceRes.data || []).map(a => [a.id, a]));
+
+    const mapped = requests.map((r: any) => {
+      const studentProf = profilesMap.get(r.student_id);
+      const unit = unitsMap.get(r.unit_id);
+      const att = attendanceMap.get(r.attendance_id);
+
+      return {
+        ...r,
+        course_units: unit ? { name: unit.name } : { name: 'Unknown Subject' },
+        attendance: att ? { date: att.date } : { date: '' },
+        profiles: studentProf ? { full_name: studentProf.full_name, adm_no: studentProf.adm_no } : { full_name: 'Unknown Student', adm_no: '' }
+      };
+    });
+
+    return {
+      pending: mapped.filter((r: any) => r.status === 'pending'),
+      approved: mapped.filter((r: any) => r.status === 'approved'),
+      rejected: mapped.filter((r: any) => r.status === 'rejected')
+    };
+  };
+
+  const getAllRequestsAdminManualJoin = async () => {
+    const { data: requests, error: reqError } = await supabase
+      .from('correction_requests')
+      .select('id, status, reason, reviewer_note, original_status, created_at, reviewed_at, student_id, lecturer_id, unit_id, attendance_id')
+      .order('created_at', { ascending: false });
+
+    if (reqError) {
+      console.error('Error fetching raw correction requests:', reqError);
+      throw new Error(`Error fetching admin requests: ${reqError.message}`);
+    }
+
+    if (!requests || requests.length === 0) {
+      return { pending: [], approved: [], rejected: [] };
+    }
+
+    const studentIds = Array.from(new Set(requests.map(r => r.student_id).filter(Boolean)));
+    const lecturerIds = Array.from(new Set(requests.map(r => r.lecturer_id).filter(Boolean)));
+    const unitIds = Array.from(new Set(requests.map(r => r.unit_id).filter(Boolean)));
+    const attendanceIds = Array.from(new Set(requests.map(r => r.attendance_id).filter(Boolean)));
+
+    const allProfileIds = Array.from(new Set([...studentIds, ...lecturerIds]));
+
+    const [profilesRes, unitsRes, attendanceRes] = await Promise.all([
+      allProfileIds.length > 0 ? supabase.from('profiles').select('id, full_name, adm_no').in('id', allProfileIds) : Promise.resolve({ data: [] }),
+      unitIds.length > 0 ? supabase.from('course_units').select('id, name').in('id', unitIds) : Promise.resolve({ data: [] }),
+      attendanceIds.length > 0 ? supabase.from('attendance').select('id, date, status').in('id', attendanceIds) : Promise.resolve({ data: [] })
+    ]);
+
+    const profilesMap = new Map<string, any>((profilesRes.data || []).map(p => [p.id, p]));
+    const unitsMap = new Map<string, any>((unitsRes.data || []).map(u => [u.id, u]));
+    const attendanceMap = new Map<string, any>((attendanceRes.data || []).map(a => [a.id, a]));
+
+    const mapped = requests.map((r: any) => {
+      const studentProf = profilesMap.get(r.student_id);
+      const lecturerProf = profilesMap.get(r.lecturer_id);
+      const unit = unitsMap.get(r.unit_id);
+      const att = attendanceMap.get(r.attendance_id);
+
+      return {
+        ...r,
+        course_units: unit ? { name: unit.name } : { name: 'Unknown Subject' },
+        attendance: att ? { date: att.date } : { date: '' },
+        profiles: studentProf ? { full_name: studentProf.full_name, adm_no: studentProf.adm_no } : { full_name: 'Unknown Student', adm_no: '' },
+        lecturer: lecturerProf ? { full_name: lecturerProf.full_name } : { full_name: 'System Auto' }
+      };
+    });
+
+    return {
+      pending: mapped.filter((r: any) => r.status === 'pending'),
+      approved: mapped.filter((r: any) => r.status === 'approved'),
+      rejected: mapped.filter((r: any) => r.status === 'rejected')
+    };
+  };
+
   const getStudentRequests = async () => {
     if (!profile?.id) return [];
 
@@ -125,22 +268,31 @@ export function useCorrectionRequests() {
       return mapped;
     }
 
-    const { data, error } = await supabase
-      .from('correction_requests')
-      .select(`
-        id, status, reason, reviewer_note, 
-        original_status, created_at, reviewed_at,
-        course_units!unit_id ( name ),
-        attendance!attendance_id ( date, status )
-      `)
-      .eq('student_id', profile.id)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('correction_requests')
+        .select(`
+          id, status, reason, reviewer_note, 
+          original_status, created_at, reviewed_at,
+          course_units!unit_id ( name ),
+          attendance!attendance_id ( date, status )
+        `)
+        .eq('student_id', profile.id)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching student requests:', error);
-      return [];
+      if (error) {
+        if (error.message.includes('relationship') || error.message.includes('schema') || error.message.includes('Could not find')) {
+          console.warn('PostgREST relation error, using safe manual query joins...', error);
+          return await getStudentRequestsManualJoin();
+        }
+        console.error('Error fetching student requests:', error);
+        return [];
+      }
+      return data || [];
+    } catch (e) {
+      console.warn('Student requests fetch failed, executing robust fallback...', e);
+      return await getStudentRequestsManualJoin();
     }
-    return data || [];
   };
 
   const getLecturerRequests = async () => {
@@ -171,36 +323,45 @@ export function useCorrectionRequests() {
       };
     }
 
-    const { data, error } = await supabase
-      .from('correction_requests')
-      .select(`
-        id, status, reason, original_status, created_at, reviewer_note, reviewed_at,
-        course_units!unit_id ( name ),
-        attendance!attendance_id ( date ),
-        profiles:profiles!student_id ( full_name, adm_no )
-      `)
-      .eq('lecturer_id', profile.id)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('correction_requests')
+        .select(`
+          id, status, reason, original_status, created_at, reviewer_note, reviewed_at,
+          course_units!unit_id ( name ),
+          attendance!attendance_id ( date ),
+          profiles:profiles!student_id ( full_name, adm_no )
+        `)
+        .eq('lecturer_id', profile.id)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching lecturer requests:', error);
-      return { pending: [], approved: [], rejected: [] };
-    }
+      if (error) {
+        if (error.message.includes('relationship') || error.message.includes('schema') || error.message.includes('Could not find')) {
+          console.warn('PostgREST relation error, using safe manual query joins...', error);
+          return await getLecturerRequestsManualJoin();
+        }
+        console.error('Error fetching lecturer requests:', error);
+        return { pending: [], approved: [], rejected: [] };
+      }
 
-    const records = data || [];
-    const mapped = records.map((r: any) => {
-      const profilesStudent = r.profiles || r['profiles!student_id'] || {};
+      const records = data || [];
+      const mapped = records.map((r: any) => {
+        const profilesStudent = r.profiles || r['profiles!student_id'] || {};
+        return {
+          ...r,
+          profiles: Array.isArray(profilesStudent) ? profilesStudent[0] : profilesStudent
+        };
+      });
+
       return {
-        ...r,
-        profiles: Array.isArray(profilesStudent) ? profilesStudent[0] : profilesStudent
+        pending: mapped.filter((r: any) => r.status === 'pending'),
+        approved: mapped.filter((r: any) => r.status === 'approved'),
+        rejected: mapped.filter((r: any) => r.status === 'rejected')
       };
-    });
-
-    return {
-      pending: mapped.filter((r: any) => r.status === 'pending'),
-      approved: mapped.filter((r: any) => r.status === 'approved'),
-      rejected: mapped.filter((r: any) => r.status === 'rejected')
-    };
+    } catch (e) {
+      console.warn('Lecturer requests fetch failed, executing robust fallback...', e);
+      return await getLecturerRequestsManualJoin();
+    }
   };
 
   const approveRequest = async (requestId: string, reviewerNote?: string) => {
@@ -250,41 +411,50 @@ export function useCorrectionRequests() {
       };
     }
 
-    const { data, error } = await supabase
-      .from('correction_requests')
-      .select(`
-        id, status, reason, reviewer_note,
-        original_status, created_at, reviewed_at,
-        course_units!unit_id ( name ),
-        attendance!attendance_id ( date ),
-        student:profiles!student_id ( full_name, adm_no ),
-        lecturer:profiles!lecturer_id ( full_name )
-      `)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('correction_requests')
+        .select(`
+          id, status, reason, reviewer_note,
+          original_status, created_at, reviewed_at,
+          course_units!unit_id ( name ),
+          attendance!attendance_id ( date ),
+          student:profiles!student_id ( full_name, adm_no ),
+          lecturer:profiles!lecturer_id ( full_name )
+        `)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching admin requests:', error);
-      throw new Error(`Error fetching admin requests: ${error.message} (${error.code || 'no code'})`);
-    }
+      if (error) {
+        if (error.message.includes('relationship') || error.message.includes('schema') || error.message.includes('Could not find')) {
+          console.warn('PostgREST relation error, using safe manual query joins...', error);
+          return await getAllRequestsAdminManualJoin();
+        }
+        console.error('Error fetching admin requests:', error);
+        throw new Error(`Error fetching admin requests: ${error.message} (${error.code || 'no code'})`);
+      }
 
-    const records = data || [];
-    const mapped = records.map((r: any) => {
-      // Standardize the student profile join and lecturer profile join names so they are safe
-      const profilesStudent = r.student || r.profiles || r['profiles!student_id'] || {};
-      const profilesLecturer = r.lecturer || r['profiles!lecturer_id'] || {};
+      const records = data || [];
+      const mapped = records.map((r: any) => {
+        // Standardize the student profile join and lecturer profile join names so they are safe
+        const profilesStudent = r.student || r.profiles || r['profiles!student_id'] || {};
+        const profilesLecturer = r.lecturer || r['profiles!lecturer_id'] || {};
+
+        return {
+          ...r,
+          profiles: Array.isArray(profilesStudent) ? profilesStudent[0] : profilesStudent,
+          lecturer: Array.isArray(profilesLecturer) ? profilesLecturer[0] : profilesLecturer
+        };
+      });
 
       return {
-        ...r,
-        profiles: Array.isArray(profilesStudent) ? profilesStudent[0] : profilesStudent,
-        lecturer: Array.isArray(profilesLecturer) ? profilesLecturer[0] : profilesLecturer
+        pending: mapped.filter((r: any) => r.status === 'pending'),
+        approved: mapped.filter((r: any) => r.status === 'approved'),
+        rejected: mapped.filter((r: any) => r.status === 'rejected')
       };
-    });
-
-    return {
-      pending: mapped.filter((r: any) => r.status === 'pending'),
-      approved: mapped.filter((r: any) => r.status === 'approved'),
-      rejected: mapped.filter((r: any) => r.status === 'rejected')
-    };
+    } catch (e: any) {
+      console.warn('Admin requests fetch failed, executing robust fallback...', e);
+      return await getAllRequestsAdminManualJoin();
+    }
   };
 
   return {

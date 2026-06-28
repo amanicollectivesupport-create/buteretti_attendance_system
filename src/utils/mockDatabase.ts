@@ -171,7 +171,22 @@ export function getDatabaseState(): DatabaseState {
   try {
     const serialized = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (serialized) {
-      return JSON.parse(serialized);
+      const state = JSON.parse(serialized);
+      // Ensure all attendance records have unique IDs
+      if (state && Array.isArray(state.attendance)) {
+        let changed = false;
+        state.attendance = state.attendance.map((r: any, idx: number) => {
+          if (!r.id || r.id === 'undefined' || r.id === 'null') {
+            r.id = `att-rec-migrated-${idx}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            changed = true;
+          }
+          return r;
+        });
+        if (changed) {
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+        }
+      }
+      return state;
     }
   } catch (e) {
     console.error('Failed to parse database state from localStorage', e);

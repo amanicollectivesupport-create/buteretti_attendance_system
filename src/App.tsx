@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import { HashRouter, Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './routes/ProtectedRoute';
@@ -16,7 +17,6 @@ import PreRegisterStudents from './pages/admin/PreRegisterStudents';
 import AdminReports from './pages/admin/Reports';
 import DatabaseSettings from './pages/admin/DatabaseSettings';
 import AdminDashboard from './components/AdminDashboard';
-import LecturerDashboard from './components/LecturerDashboard';
 import StudentDashboard from './components/StudentDashboard';
 import SQLViewer from './components/SQLViewer';
 import AdminLayout from './components/layout/AdminLayout';
@@ -24,9 +24,11 @@ import AdminDashboardView from './pages/admin/Dashboard';
 import ManageUsersView from './pages/admin/ManageUsers';
 import AssignLecturerUnitsView from './pages/admin/AssignLecturerUnits';
 import LecturerLayout from './components/layout/LecturerLayout';
-import LecturerDashboardView from './pages/lecturer/Dashboard';
-import LecturerMarkAttendanceView from './pages/lecturer/MarkAttendance';
-import LecturerMyUnitsView from './pages/lecturer/MyUnits';
+import LecturerDashboard from './pages/lecturer/Dashboard';
+import MarkAttendance from './pages/lecturer/MarkAttendance';
+import MyUnits from './pages/lecturer/MyUnits';
+import MyStudents from './pages/lecturer/MyStudents';
+import LecturerProfile from './pages/lecturer/Profile';
 import CorrectionRequests from './pages/lecturer/CorrectionRequests';
 import ChangePassword from './pages/lecturer/ChangePassword';
 import StudentLayout from './components/layout/StudentLayout';
@@ -302,8 +304,19 @@ function AppContent() {
 
       setDbState(mappedState);
       saveDatabaseState(mappedState);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error synchronizing from Supabase:', err);
+      const errMsg = err?.message || String(err);
+      if (errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('networkerror') || errMsg.toLowerCase().includes('fetch')) {
+        if (isSupabaseReal()) {
+          localStorage.setItem('force_demo_mode', 'true');
+          toast.error('Database sync offline. Automatically switching to interactive Demo Mode fallback...', { duration: 5000 });
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+          return;
+        }
+      }
     } finally {
       setDbLoading(false);
     }
@@ -358,16 +371,6 @@ function AppContent() {
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 
-      {/* Lecturer Forced Change Password (Standalone - no layout) */}
-      <Route
-        path="/lecturer/change-password"
-        element={
-          <ProtectedRoute requiredRole="lecturer">
-            <ChangePassword />
-          </ProtectedRoute>
-        }
-      />
-
       {/* Lecturer Protected Routes */}
       <Route
         path="/lecturer"
@@ -378,11 +381,23 @@ function AppContent() {
         }
       >
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<LecturerDashboardView state={dbState} lecturerId={profile?.id || user?.id || ''} />} />
-        <Route path="mark-attendance" element={<LecturerMarkAttendanceView state={dbState} lecturerId={profile?.id || user?.id || ''} onUpdate={handleUpdateDatabase} />} />
-        <Route path="units" element={<LecturerMyUnitsView state={dbState} lecturerId={profile?.id || user?.id || ''} />} />
-        <Route path="correction-requests" element={<CorrectionRequests />} />
+        <Route path="dashboard" element={<LecturerDashboard state={dbState} lecturerId={profile?.id || user?.id || ''} onUpdate={handleUpdateDatabase} />} />
+        <Route path="mark-attendance" element={<MarkAttendance state={dbState} lecturerId={profile?.id || user?.id || ''} onUpdate={handleUpdateDatabase} />} />
+        <Route path="my-units" element={<MyUnits state={dbState} lecturerId={profile?.id || user?.id || ''} />} />
+        <Route path="students" element={<MyStudents />} />
+        <Route path="corrections" element={<CorrectionRequests />} />
+        <Route path="profile" element={<LecturerProfile />} />
       </Route>
+
+      {/* Lecturer Forced Change Password (Standalone - no layout) */}
+      <Route
+        path="/lecturer/change-password"
+        element={
+          <ProtectedRoute requiredRole="lecturer">
+            <ChangePassword />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Student Protected Routes */}
       <Route

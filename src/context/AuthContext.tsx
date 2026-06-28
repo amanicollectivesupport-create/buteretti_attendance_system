@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, isSupabaseReal } from '../lib/supabaseClient';
 import { Profile, UserRole } from '../types';
 import { User } from '@supabase/supabase-js';
 
@@ -24,6 +24,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const handleConnectionError = (errorMsg: string = '') => {
+    if (isSupabaseReal()) {
+      console.warn('Supabase fetch connection failed:', errorMsg);
+      localStorage.setItem('force_demo_mode', 'true');
+      toast.error('Supabase connection failed. Falling back to robust Local Database Demo mode...', { duration: 5000 });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    }
+  };
+
+  const isNetworkFailure = (msg: string) => {
+    const m = String(msg).toLowerCase();
+    return m.includes('failed to fetch') || m.includes('networkerror') || m.includes('fetch');
+  };
+
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -32,8 +48,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', userId)
         .single();
 
-      if (error || !data) {
-        console.error('Error fetching profile:', error?.message || 'No profile data found');
+      if (error) {
+        console.error('Error fetching profile:', error.message);
+        if (isNetworkFailure(error.message)) {
+          handleConnectionError(error.message);
+          return;
+        }
+        setProfile(null);
+        setRole(null);
+        toast.error("Profile not found. Contact system administrator.");
+      } else if (!data) {
         setProfile(null);
         setRole(null);
         toast.error("Profile not found. Contact system administrator.");
@@ -41,8 +65,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(data as Profile);
         setRole((data as Profile).role);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Unexpected error fetching profile:', err);
+      const errMsg = err?.message || String(err);
+      if (isNetworkFailure(errMsg)) {
+        handleConnectionError(errMsg);
+        return;
+      }
       setProfile(null);
       setRole(null);
       toast.error("Profile not found. Contact system administrator.");
@@ -74,7 +103,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 1. Get initial session
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession() as any;
+        if (error && isNetworkFailure(error.message)) {
+          handleConnectionError(error.message);
+          return;
+        }
         if (session?.user) {
           setUser(session.user);
           await fetchProfile(session.user.id);
@@ -83,8 +116,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(null);
           setRole(null);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error checking auth session:', err);
+        const errMsg = err?.message || String(err);
+        if (isNetworkFailure(errMsg)) {
+          handleConnectionError(errMsg);
+          return;
+        }
       } finally {
         setLoading(false);
       }

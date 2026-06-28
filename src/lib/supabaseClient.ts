@@ -159,7 +159,14 @@ class MockQueryBuilder {
   async insert(rowOrRows: any) {
     const rows = Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows];
     const current = getLocalData(this.table);
-    const updated = [...current, ...rows];
+    const preparedRows = rows.map(r => {
+      const newRecord = { ...r };
+      if (!newRecord.id) {
+        newRecord.id = `${this.table.slice(0, 3)}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+      }
+      return newRecord;
+    });
+    const updated = [...current, ...preparedRows];
     saveLocalData(this.table, updated);
     return { data: rowOrRows, error: null };
   }
@@ -168,11 +175,30 @@ class MockQueryBuilder {
     const rows = Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows];
     const current = getLocalData(this.table);
     for (const r of rows) {
-      const idx = current.findIndex(item => item.id === r.id);
+      let idx = -1;
+      if (r.id) {
+        idx = current.findIndex(item => item.id === r.id);
+      } else if (this.table === 'attendance') {
+        idx = current.findIndex(item => 
+          item.student_id === r.student_id && 
+          item.unit_id === r.unit_id && 
+          item.date === r.date
+        );
+      } else if (this.table === 'lecturer_units') {
+        idx = current.findIndex(item => 
+          item.lecturer_id === r.lecturer_id && 
+          item.unit_id === r.unit_id
+        );
+      }
+      
       if (idx !== -1) {
         current[idx] = { ...current[idx], ...r };
       } else {
-        current.push(r);
+        const newRecord = { ...r };
+        if (!newRecord.id) {
+          newRecord.id = `${this.table.slice(0, 3)}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+        }
+        current.push(newRecord);
       }
     }
     saveLocalData(this.table, current);
