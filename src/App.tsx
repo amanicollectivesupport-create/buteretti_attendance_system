@@ -41,6 +41,7 @@ import Dashboard from './pages/student/Dashboard';
 import Timetable from './pages/student/Timetable';
 import Settings from './pages/student/Settings';
 import ButereLogo from './components/ButereLogo';
+import Landing from './pages/Landing';
 import { getDatabaseState, saveDatabaseState } from './utils/mockDatabase';
 import { DatabaseState } from './types';
 import { supabase, isSupabaseReal } from './lib/supabaseClient';
@@ -342,6 +343,7 @@ function AppContent() {
 
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<StudentSignup state={dbState} onRefresh={loadStateFromSupabase} />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
