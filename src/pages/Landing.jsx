@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ButereLogo from '../components/ButereLogo';
 import { 
   ShieldCheck, 
   MapPin, 
@@ -105,9 +106,7 @@ export default function Landing() {
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 h-14 px-4 md:px-8 flex items-center justify-between">
         {/* LEFT — Brand */}
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
-            <ShieldCheck className="w-5 h-5 text-blue-600" />
-          </div>
+          <ButereLogo size={36} />
           <div>
             <span className="text-sm font-medium text-gray-900 leading-none block">Butere TTI</span>
             <span className="text-[11px] text-gray-400 block mt-0.5 font-medium">Attendance System</span>
@@ -161,6 +160,9 @@ export default function Landing() {
 
       {/* SECTION 2 — HERO */}
       <header className="bg-gray-50 border-b border-gray-100 py-16 px-4 md:px-8 text-center flex flex-col items-center">
+        {/* LOGO */}
+        <ButereLogo size={110} className="mb-5" />
+
         {/* BADGE */}
         <div className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1 rounded-full border border-blue-100 inline-flex items-center gap-1.5 mb-5">
           <MapPin className="w-3.5 h-3.5 text-blue-600" />
@@ -523,6 +525,9 @@ export default function Landing() {
 
       {/* SECTION 6 — CTA (bottom) */}
       <section className="py-16 px-4 md:px-8 text-center bg-gray-50 border-b border-gray-100 flex flex-col items-center">
+        {/* LOGO */}
+        <ButereLogo size={100} className="mb-5" />
+
         {/* BADGE */}
         <div className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1 rounded-full border border-blue-100 inline-flex items-center gap-1.5 mb-5">
           <MapPin className="w-3.5 h-3.5 text-blue-600" />
@@ -562,11 +567,14 @@ export default function Landing() {
       <footer className="border-t border-gray-100 py-6 px-4 md:px-8 bg-white">
         <div className="max-w-5xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* LEFT */}
-          <div className="text-center sm:text-left">
-            <span className="text-xs font-semibold text-gray-800 block">Butere TTI Attendance System</span>
-            <span className="text-[10px] text-gray-400 block mt-1 font-medium">
-              &copy; 2026 Butere Technical Training Institute
-            </span>
+          <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+            <ButereLogo size={36} />
+            <div>
+              <span className="text-xs font-semibold text-gray-800 block">Butere TTI Attendance System</span>
+              <span className="text-[10px] text-gray-400 block mt-1 font-medium">
+                &copy; 2026 Butere Technical Training Institute
+              </span>
+            </div>
           </div>
 
           {/* RIGHT */}
